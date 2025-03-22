@@ -1,13 +1,15 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
-import 'package:task_manager_app/models/task_manager/task_model.dart';
+import 'package:task_manager_app/common/utils/text_util.dart';
+import 'package:task_manager_app/models/task_manager/task_request_model.dart';
 
 class DatabaseHelper {
   //Create instance
-  static final DatabaseHelper instance = DatabaseHelper._instance();
+  static final DatabaseHelper instance = DatabaseHelper._();
 
-  DatabaseHelper._instance();
+  DatabaseHelper._();
 
   static Database? _database;
 
@@ -22,8 +24,8 @@ class DatabaseHelper {
   static const String colDescription = 'description';
   static const String colStatus = 'status';
   static const String colDueDate = 'due_date';
-  static const String colCreateDate = 'create_date';
-  static const String colUpdateDate = 'update_date';
+  static const String colCreateDate = 'created_date';
+  static const String colUpdateDate = 'updated_date';
 
   // Define a getter to access the database.
   Future<Database> get database async {
@@ -50,6 +52,7 @@ class DatabaseHelper {
       version: versionNumber,
       onCreate: _onCreate,
     );
+    debugPrint("Database connected");
     return db;
   }
 
@@ -59,10 +62,11 @@ class DatabaseHelper {
         " $colTitle TEXT NOT NULL, "
         " $colDescription TEXT, "
         " $colStatus INT NOT NULL, "
-        " $colDueDate TEXT, "
+        " $colDueDate TEXT NOT NULL, "
         " $colCreateDate TEXT NOT NULL, "
         " $colUpdateDate TEXT NOT NULL"
         ")");
+    debugPrint("Database create");
   }
 
   // CRUD METHOD: get, create, update, delete
@@ -70,9 +74,10 @@ class DatabaseHelper {
   // Get all records
   Future<List<Map<String, dynamic>>> getAll() async {
     final db = await database;
-    // Query the table for all task records. {SELECT * FROM Tasks ORDER BY Id ASC}
+    // Query the table for all task records. {SELECT * FROM Tasks ORDER BY Id DESC}
     try {
-      final result = await db.query(taskTableName, orderBy: '$colId ASC');
+      final result = await db.query(taskTableName, orderBy: '$colId DESC');
+      debugPrint(result.toString());
       return result;
     } catch (e) {
       throw Exception(e.toString());
@@ -92,6 +97,7 @@ class DatabaseHelper {
       if (result.isEmpty) {
         throw Exception("Task not found!");
       } else {
+        debugPrint(result.toString());
         return result.first;
       }
     } catch (e) {
@@ -99,40 +105,81 @@ class DatabaseHelper {
     }
   }
 
+  // Get task by filter
+  Future<List<Map<String, dynamic>>> getByFilter({required Map<String, dynamic> filter}) async {
+    final db = await database;
+    try {
+      String whereClause = '';
+      List<dynamic> whereArgs = [];
+
+      // Build query conditions dynamically
+      bool hasStatus = filter.containsKey(colStatus) && (filter[colStatus] == 0 || filter[colStatus] == 1);
+      bool hasTitle = filter.containsKey(colTitle) && TextUtils.isNotEmpty(filter[colTitle]);
+
+      // Build WHERE clause based on provided filters
+      if (hasStatus && hasTitle) {
+        whereClause = '$colStatus = ? AND $colTitle LIKE ?';
+        whereArgs = [filter[colStatus], '%${filter[colTitle]}%'];
+      } else if (hasStatus) {
+        whereClause = '$colStatus = ?';
+        whereArgs = [filter[colStatus]];
+      } else if (hasTitle) {
+        whereClause = '$colTitle LIKE ?';
+        whereArgs = ['%${filter[colTitle]}%'];
+      }
+
+      final result = await db.query(
+        taskTableName,
+        where: whereClause.isNotEmpty ? whereClause : null,
+        whereArgs: whereArgs.isNotEmpty ? whereArgs : null,
+        orderBy: '$colId DESC',
+      );
+
+      return result; // Return empty list instead of throwing exception
+    } catch (e) {
+      debugPrint('Error filtering tasks: ${e.toString()}');
+      throw Exception('Failed to filter tasks: ${e.toString()}');
+    }
+  }
+
   // Create task record
-  Future<bool> insert(TaskModel task) async {
+  Future<bool> insert({required TaskRequestModel taskData}) async {
     final db = await database;
 
     try {
       // Insert the Task into the table.
       // Insert func will return the id of the last inserted row.
-      final result = await db.insert(taskTableName, task.toJson());
+      final result = await db.insert(taskTableName, taskData.toJson());
 
       // 0 could be returned for some specific conflict algorithms if not inserted.
+      result != 0 ? debugPrint("create success${taskData.toJson()}") : debugPrint("create fail");
+
       return result != 0;
     } catch (e) {
-      throw Exception(e.toString());
+      debugPrint(e.toString());
+      return false;
     }
   }
 
   // Update task record
-  Future<int> update(TaskModel task) async {
+  Future<bool> update({required TaskRequestModel taskData, required int id}) async {
     final db = await database;
 
     try {
       // Update the given Task.
-      var res = await db.update(taskTableName, task.toJson(),
+      await db.update(taskTableName, taskData.toJson(),
           where: '$colId = ?',
           // Pass the Task's id as a whereArg to prevent SQL injection.
-          whereArgs: [task.id]);
-      return res;
+          whereArgs: [id]);
+      return true;
     } catch (e) {
-      throw Exception(e.toString());
+      debugPrint(e.toString());
+      return false;
     }
   }
 
   // Delete a task record
-  Future<void> delete(int id) async {
+  Future<void> delete({required int id}) async {
     final db = await database;
 
     try {
@@ -145,5 +192,10 @@ class DatabaseHelper {
     } catch (e) {
       throw Exception(e.toString());
     }
+  }
+
+  Future close() async {
+    final db = await database;
+    db.close();
   }
 }

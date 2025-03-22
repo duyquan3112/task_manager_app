@@ -1,14 +1,32 @@
 import 'package:flutter/material.dart';
+import 'package:task_manager_app/common/enum/app_mode.dart';
+import 'package:task_manager_app/services/local/local_data_helper.dart';
 
 import 'common/colors.dart';
-import 'features/task_manager/page/task_manager_page.dart';
+import 'common/size.dart';
+import 'features/task_manager/pages/task_manager_home_page/task_manager_home_page.dart';
 
-class AppView extends StatelessWidget {
+class AppView extends StatefulWidget {
   const AppView({super.key});
 
   @override
+  State<AppView> createState() => _AppViewState();
+}
+
+class _AppViewState extends State<AppView> {
+  ThemeMode _themeMode = ThemeMode.light;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadThemeMode();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    AppSize.instance.init(context);
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
           seedColor: UIColors.instance.primaryColor,
@@ -16,6 +34,7 @@ class AppView extends StatelessWidget {
         appBarTheme: AppBarTheme(
           scrolledUnderElevation: 0.0,
           foregroundColor: UIColors.instance.defaultColor,
+          color: UIColors.instance.whiteColor,
         ),
         scaffoldBackgroundColor: UIColors.instance.backgroundColor,
         useMaterial3: true,
@@ -50,7 +69,28 @@ class AppView extends StatelessWidget {
           circularTrackColor: Colors.transparent,
         ),
       ),
-      home: const TaskManagerPage(),
+      themeMode: _themeMode,
+      home: TaskManagerPage(
+        updateThemeMode: _updateThemeMode,
+        isDarkMode: _themeMode == ThemeMode.dark,
+      ),
     );
+  }
+
+  _loadThemeMode() async {
+    setState(() {
+      _themeMode = LocalDataHelper.instance.getMode() == AppMode.dark.name ? ThemeMode.dark : ThemeMode.light;
+    });
+  }
+
+  _saveThemeMode(bool isDarkMode) async {
+    await LocalDataHelper.instance.setMode(isDarkMode ? AppMode.dark.name : AppMode.normal.name);
+  }
+
+  void _updateThemeMode(bool isDarkMode) {
+    setState(() {
+      _themeMode = isDarkMode ? ThemeMode.dark : ThemeMode.light;
+      _saveThemeMode(isDarkMode);
+    });
   }
 }

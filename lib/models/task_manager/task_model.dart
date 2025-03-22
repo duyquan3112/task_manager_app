@@ -4,8 +4,8 @@ class TaskModel {
   String? description;
   int? status;
   String? dueDate;
-  String? createdAt;
-  String? updatedAt;
+  String? createdDate;
+  String? updatedDate;
 
   TaskModel({
     this.id,
@@ -13,8 +13,8 @@ class TaskModel {
     this.description,
     this.status,
     this.dueDate,
-    this.createdAt,
-    this.updatedAt,
+    this.createdDate,
+    this.updatedDate,
   });
 
   TaskModel.fromJson(Map<String, dynamic> json) {
@@ -23,8 +23,8 @@ class TaskModel {
     description = json["description"];
     status = json["status"];
     dueDate = json["due_date"];
-    createdAt = json["created_at"];
-    updatedAt = json["updated_at"];
+    createdDate = json["created_date"];
+    updatedDate = json["updated_date"];
   }
 
   Map<String, dynamic> toJson() {
@@ -34,8 +34,8 @@ class TaskModel {
     _data["description"] = description;
     _data["status"] = status;
     _data["due_date"] = dueDate;
-    _data["created_at"] = createdAt;
-    _data["updated_at"] = updatedAt;
+    _data["created_date"] = createdDate;
+    _data["updated_date"] = updatedDate;
     return _data;
   }
 
@@ -45,8 +45,8 @@ class TaskModel {
     String? description,
     int? status,
     String? dueDate,
-    String? createdAt,
-    String? updatedAt,
+    String? createdDate,
+    String? updatedDate,
   }) =>
       TaskModel(
         id: id ?? this.id,
@@ -54,7 +54,7 @@ class TaskModel {
         description: description ?? this.description,
         status: status ?? this.status,
         dueDate: dueDate ?? this.dueDate,
-        createdAt: createdAt ?? this.createdAt,
-        updatedAt: updatedAt ?? this.updatedAt,
+        createdDate: createdDate ?? this.createdDate,
+        updatedDate: updatedDate ?? this.updatedDate,
       );
 }
